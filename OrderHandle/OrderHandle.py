@@ -35,7 +35,7 @@ def handle_data(data):
 
 
 # read file
-datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/order_handle/order_train.csv"
+datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/OrderHandle/order_train.csv"
 data = pd.read_csv(datafile, header=0, sep=',')
 
 # handle the data
@@ -70,7 +70,7 @@ print([*zip(feature_name, clf.feature_importances_)])
 
 
 # read order_data to be predicted
-datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/order_handle/order.csv"
+datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/OrderHandle/order.csv"
 order_data = pd.read_csv(datafile, header=0, sep=',')
 
 # handle the data
