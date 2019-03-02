@@ -2,24 +2,27 @@ import random
 
 
 #  假设一个未编码的个体表示为：取,取,不取,不取，可使用10进制数12表示
-def encode(N, unit):  #  N：染色体长度（如4）；unit：个体表示（如12）
+def encode(N, unit):  # N：染色体长度（如4）；unit：个体表示（如12）
     unit = int(unit)
     unit_str = str(bin(unit))[2:].zfill(N)  # 左侧补0
     unit_list = []
     for s in unit_str:
         unit_list.append(s)
     return unit_list
-    
+
+
 def decode(unit_list):
     l = ll = len(unit_list) - 1
     c = 0
-    while l>=0:
+    while l >= 0:
         if unit_list[l] == '1':
-            c +=  pow(2, ll - l)
+            c += pow(2, ll - l)
         l -= 1
     return c
 
 # 计算种群的适应性概率
+
+
 def getRWSPList(population, w, v, W):  # population：总群；w：物体重量list；v：物体价值list；W：背包的重量阈值
     n = len(population)  # 群体总数
     v_list = []  # 价值list
@@ -41,6 +44,8 @@ def getRWSPList(population, w, v, W):  # population：总群；w：物体重量l
     return p_list
 
 # 根据适应性概率随机选择一个个体
+
+
 def RWS(population, plist):  # plist为总群个体抽中概率list
     random.seed()
     r = random.random()  # 获得随机数
@@ -52,6 +57,8 @@ def RWS(population, plist):  # plist为总群个体抽中概率list
             return population[index]
 
 #  获得随机couple组
+
+
 def getRandomCouple(n):  # n:个体总数
     random.seed()
     selected = [0]*n  # 是否被选择了
@@ -66,6 +73,7 @@ def getRandomCouple(n):  # n:个体总数
         couples.append(pair)
     return couples
 
+
 def crossover(population, couples, cross_p, N):  # cross_p为交叉概率;N为编码长度
     random.seed()
     new_population = []
@@ -76,14 +84,17 @@ def crossover(population, couples, cross_p, N):  # cross_p为交叉概率;N为�
         if p >= (1 - cross_p):
             # 交叉使用从随机位置交叉尾部
             random_loc = random.randint(0, N-1)  # 获得随机位置
-            new_population.append(unit_one[0:random_loc] + unit_two[random_loc:])
-            new_population.append(unit_two[0:random_loc] + unit_one[random_loc:])
+            new_population.append(
+                unit_one[0:random_loc] + unit_two[random_loc:])
+            new_population.append(
+                unit_two[0:random_loc] + unit_one[random_loc:])
         else:
             new_population.append(unit_one)
             new_population.append(unit_two)
     for (index, unit) in enumerate(new_population):
         new_population[index] = decode(unit)  # 解码
     return list(set(new_population))
+
 
 def mutation(population, N, mutation_p):
     # print(population, N, mutation_p)
@@ -93,9 +104,9 @@ def mutation(population, N, mutation_p):
         unit_code = encode(N, unit)
         p = random.random()  # 获得随机概率
         if p > (1 - mutation_p):
-            random_loc = random.randint(0, N-1) 
+            random_loc = random.randint(0, N-1)
             v = unit_code[random_loc]
-            unit_code[random_loc] = '0' if v=='1' else '1'
+            unit_code[random_loc] = '0' if v == '1' else '1'
         new_population.append(decode(unit_code))
     return list(set(new_population))
 
@@ -107,29 +118,29 @@ n = pow(2, N)  # 种群个体总数
 w = [2, 3, 1, 5]  # 每个物体重量
 v = [4, 3, 2, 1]  # 每个物体价值
 W = 6  # 重量阈值
-population = [] 
+population = []
 
 # 初始化种群
 for i in range(n):
     population.append(i)
-print("Original population:",population)
+print("Original population:", population)
 
 # 算法开始
-c = 0 # 当前迭代次数
+c = 0  # 当前迭代次数
 while c < generation_count:
     print('-'*10+str(c)+'-'*10)
-    
+
     # 种群选择
-    plist = getRWSPList(population, w, v , W)  # 获得总群概率list
+    plist = getRWSPList(population, w, v, W)  # 获得总群概率list
     new_population = []
     for i in range(n):  # 适者生存
         new_population.append(RWS(population, plist))
     new_population = list(set(new_population))
-    print("After selection:",new_population)
+    print("After selection:", new_population)
     if len(new_population) == 1:
         population = new_population
         break
-    
+
     # 种群交叉
     couples = getRandomCouple(len(new_population))  # 获得随机配对
     new_population = crossover(new_population, couples, 0.8, N)
@@ -137,16 +148,16 @@ while c < generation_count:
     if len(new_population) == 1:
         population = new_population
         break
-    
+
     # 种群变异
     new_population = mutation(new_population, N, 0.1)
-    print("After mutation:"+ str(new_population))
+    print("After mutation:" + str(new_population))
     if len(new_population) == 1:
         population = new_population
         break
-    
+
     population = new_population
-    
+
     c += 1
 
 print(population)
