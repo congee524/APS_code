@@ -1,6 +1,5 @@
 #!/bin/bash
 
-git pull
 git add .
 if [ ! $1 ]; then
 	git commit -m "my commit"
