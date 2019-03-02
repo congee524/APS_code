@@ -9,6 +9,7 @@ def encode(N, unit):  #  N：染色体长度（如4）；unit：个体表示（�
     for s in unit_str:
         unit_list.append(s)
     return unit_list
+    
 def decode(unit_list):
     l = ll = len(unit_list) - 1
     c = 0

@@ -1,5 +1,4 @@
 import datetime
-
 import graphviz
 import numpy as np
 import pandas as pd
@@ -15,38 +14,50 @@ def handle_data(data):
     today = '2019-03-02'
     today = datetime.datetime.strptime(today, '%Y-%m-%d')
 
-    data['deadline'] = datetime.datetime.strptime(data['deadline'], '%Y-%m-%d')
+    data['deadline'] = pd.to_datetime(data['deadline'])
     data['deadline'] = data['deadline'] - today
-    data['model_num'] = -data['model_num']
+    data['deadline'] = data['deadline'].astype('int')//(24*2600*10**9)
+    data['model_number'] = -data['model_number']
 
-    data.drop('importance') = preprocessing.scale(data.drop('importance', axis=1))
+    min_max_scaler = preprocessing.MinMaxScaler()
+    if 'importance' in data:
+        feature_name = data.drop('importance', axis=1).columns
+        
+        new_data = pd.DataFrame(min_max_scaler.fit_transform(
+            data.drop('importance', axis=1)), columns=feature_name)
+        new_data['importance'] = data['importance']
+        return new_data
+    else:
+        feature_name = data.columns
+        new_data = pd.DataFrame(min_max_scaler.fit_transform(
+            data), columns=feature_name)
+        return new_data
 
 
 # read file
-datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/order_train.csv"
+datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/order_handle/order_train.csv"
 data = pd.read_csv(datafile, header=0, sep=',')
 
 # handle the data
-handle_data(data)
+train_data = handle_data(data)
 
 # train the classifier
 Xtrain, Xtest, Ytrain, Ytest = train_test_split(
-    data, data['importrance'], test_size=0.3, random_state=30)
-feature_name = ['model_num', 'quantity', 'profit',
-                'deadline', 'cooperation', 'market_value']
+    train_data.drop('importance', axis=1), train_data['importance'], test_size=0.3, random_state=30)
+feature_name = train_data.drop('importance', axis=1).columns
 importance_name = ['significant', 'important',
                    'noteworthy', 'ordinary', 'soft']
 
 clf = tree.DecisionTreeClassifier(criterion="entropy",
-                                  random_state=30,
-                                  splitter="random",
-                                  max_depth=3,
-                                  min_samples_leaf=10,
-                                  in_samples_split=10,
+                                  # random_state=30,
+                                  # splitter="random",
+                                  # max_depth=3,
+                                  # min_samples_leaf=10,
+                                  # in_samples_split=10,
                                   )
 clf = clf.fit(Xtrain, Ytrain)
 score = clf.score(Xtest, Ytest)
-print("score: " + score)
+print("score: ", score)
 
 # draw the decision tree and list the ratio of feature_importance
 dot_data = tree.export_graphviz(
@@ -59,13 +70,13 @@ print([*zip(feature_name, clf.feature_importances_)])
 
 
 # read order_data to be predicted
-datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/order.csv"
+datafile = "/media/congee/1CD870D4D870AE20/Documents/homework_4th/APS/code/order_handle/order.csv"
 order_data = pd.read_csv(datafile, header=0, sep=',')
 
 # handle the data
-ans = order_data
-handle_data(order_data)
+ans = pd.DataFrame.copy(order_data)
+predict_data = handle_data(order_data)
 
 # predict the importance
-ans['importance'] = clf.predict(order_data.drop('importance', axis=1))
+ans['importance'] = clf.predict(predict_data)
 ans.to_csv(datafile, sep=',')
