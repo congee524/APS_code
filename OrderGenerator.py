@@ -1,7 +1,7 @@
 #!usr/bin/python
 # this script is used for generating orders
 #
-# python OrderGenerator [name=filename] [number=number_of_orders] [importance=true/false]
+# python OrderGenerator.py [name=filename] [number=number_of_orders] [importance=true/false]
 #
 # Irrelevant case and order, the default is name=data number=60 importance=true
 #
