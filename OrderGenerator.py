@@ -18,7 +18,7 @@ def GenerateARecord():
     ddl = ddl.strftime('%Y-%m-%d')
     toc = random.randint(0,30)
     mvc = random.randint(100,3000)
-    importance = toc * 0.5 + mvc * 0.5
+    importance = int(toc/float(30)*2.5 + mvc/float(3000)*2.5)
     return (modelNum,quantity,profit,ddl,toc,mvc,importance)
 
 # define the header
