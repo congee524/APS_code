@@ -1,163 +1,202 @@
+# -*- coding:utf-8 -*-
+
 import random
+import math
+from operator import itemgetter
 
 
-#  假设一个未编码的个体表示为：取,取,不取,不取，可使用10进制数12表示
-def encode(N, unit):  # N：染色体长度（如4）；unit：个体表示（如12）
-    unit = int(unit)
-    unit_str = str(bin(unit))[2:].zfill(N)  # 左侧补0
-    unit_list = []
-    for s in unit_str:
-        unit_list.append(s)
-    return unit_list
+class Gene:
+    '''
+    This is a class to represent individual(Gene) in GA algorithom
+    each object of this class have two attribute: data, size
+    '''
+
+    def __init__(self, **data):
+        self.__dict__.update(data)
+        self.size = len(data['data'])  # length of gene
 
 
-def decode(unit_list):
-    l = ll = len(unit_list) - 1
-    c = 0
-    while l >= 0:
-        if unit_list[l] == '1':
-            c += pow(2, ll - l)
-        l -= 1
-    return c
+class GA:
+    '''
+    This is a class of GA algorithm. 
+    '''
 
-# 计算种群的适应性概率
+    def __init__(self, parameter):
+        '''
+        Initialize the pop of GA algorithom and evaluate the pop by computing its' fitness value .
+        The data structure of pop is composed of several individuals which has the form like that:
+
+        {'Gene':a object of class Gene, 'fitness': 1.02(for example)}
+        Representation of Gene is a list: [b s0 u0 sita0 s1 u1 sita1 s2 u2 sita2]
+
+        '''
+        #parameter = [CXPB, MUTPB, NGEN, popsize, low, up]
+        self.parameter = parameter
+
+        low = self.parameter[4]
+        up = self.parameter[5]
+
+        self.bound = []
+        self.bound.append(low)
+        self.bound.append(up)
+
+        pop = []
+        for _ in range(self.parameter[3]):
+            geneinfo = []
+            for pos in range(len(low)):
+                # initialise popluation
+                geneinfo.append(random.uniform(
+                    self.bound[0][pos], self.bound[1][pos]))
+
+            fitness = self.evaluate(geneinfo)  # evaluate each chromosome
+            # store the chromosome and its fitness
+            pop.append({'data': geneinfo, 'fitness': fitness})
+
+        self.pop = pop
+        # store the best chromosome in the population
+        self.bestindividual = self.selectBest(self.pop)
+
+    def evaluate(self, individual):
+        # return fitness value
+        return sum(individual)
+
+    def selectBest(self, pop):
+        '''
+        select the best individual from pop
+        '''
+        s_inds = sorted(pop, key=itemgetter("fitness"), reverse=False)
+        return s_inds[0]
+
+    def selection(self, individuals, k):
+        '''
+        select two individuals from pop
+        '''
+        s_inds = sorted(individuals, key=itemgetter(
+            "fitness"), reverse=True)  # sort the pop by the reference of 1/fitness
+        # sum up the 1/fitness of the whole pop
+        sum_fits = sum(1/ind['fitness'] for ind in individuals)
+
+        chosen = []
+        for _ in range(k):
+            # randomly produce a num in the range of [0, sum_fits]
+            u = random.random() * sum_fits
+            sum_ = 0
+            for ind in s_inds:
+                sum_ += 1/ind['fitness']  # sum up the 1/fitness
+                if sum_ > u:
+                    # when the sum of 1/fitness is bigger than u, choose the one, which means u is in the range of [sum(1,2,...,n-1),sum(1,2,...,n)] and is time to choose the one ,namely n-th individual in the pop
+                    chosen.append(ind)
+                    break
+
+        return chosen
+
+    def crossoperate(self, offspring):
+        '''
+        cross operation
+        '''
+        dim = len(offspring['data'])
+
+        # Gene's data of first offspring chosen from the selected pop
+        geninfo1 = offspring['data']
+        # Gene's data of second offspring chosen from the selected pop
+        geninfo2 = offspring['data']
+
+        # select a position in the range from 0 to dim-1,
+        pos1 = random.randrange(1, dim)
+        pos2 = random.randrange(1, dim)
+
+        newoff = Gene(data=[])  # offspring produced by cross operation
+        newoff = []
+        for i in range(dim):
+            if (i >= min(pos1, pos2) and i <= max(pos1, pos2)):
+                newoff.append(geninfo2[i])
+                # the gene data of offspring produced by cross operation is from the second offspring in the range [min(pos1,pos2),max(pos1,pos2)]
+            else:
+                newoff.append(geninfo1[i])
+                # the gene data of offspring produced by cross operation is from the frist offspring in the range [min(pos1,pos2),max(pos1,pos2)]
+
+        return newoff
+
+    def mutation(self, crossoff, bound):
+        '''
+        mutation operation
+        '''
+
+        dim = len(crossoff['data'])
+
+        # chose a position in crossoff to perform mutation.
+        pos = random.randrange(1, dim)
+
+        crossoff['data'][pos] = random.uniform(bound[0][pos], bound[1][pos])
+        return crossoff['data']
+
+    def GA_main(self):
+        '''
+        main frame work of GA
+        '''
+
+        popsize = self.parameter[3]
+
+        print("Start of evolution")
+
+        # Begin the evolution
+        for g in range(NGEN):
+
+            print("-- Generation %i --" % g)
+
+            # Apply selection based on their converted fitness
+            selectpop = self.selection(self.pop, popsize)
+
+            nextoff = []
+            while len(nextoff) != popsize:
+                # Apply crossover and mutation on the offspring
+
+                # Select one individuals
+                offspring = random.choice(selectpop)
+
+                if random.random() < CXPB:  # cross two individuals with probability CXPB
+                    cross_data = self.crossoperate(offspring)
+                    offspring['data'] = cross_data
+
+                if random.random() < MUTPB:  # mutate an individual with probability MUTPB
+                    mut_data = self.mutation(offspring, self.bound)
+                    offspring['data'] = mut_data
+                offspring['fitness'] = self.evaluate(offspring['data'])
+                nextoff.append(offspring)
+
+            # The population is entirely replaced by the offspring
+            self.pop = nextoff
+
+            # Gather all the fitnesses in one list and print the stats
+            fits = [ind['fitness'] for ind in self.pop]
+
+            length = len(self.pop)
+            mean = sum(fits) / length
+            sum2 = sum(x*x for x in fits)
+            std = abs(sum2 / length - mean**2)**0.5
+            best_ind = self.selectBest(self.pop)
+
+            if best_ind['fitness'] < self.bestindividual['fitness']:
+                self.bestindividual = best_ind
+
+            print("Best individual found is %s, %s" % (
+                self.bestindividual['data'], self.bestindividual['fitness']))
+            print("  Min fitness of current pop: %s" % min(fits))
+            print("  Max fitness of current pop: %s" % max(fits))
+            print("  Avg fitness of current pop: %s" % mean)
+            print("  Std of currrent pop: %s" % std)
+
+        print("-- End of (successful) evolution --")
 
 
-def getRWSPList(population, w, v, W):  # population：总群；w：物体重量list；v：物体价值list；W：背包的重量阈值
-    n = len(population)  # 群体总数
-    v_list = []  # 价值list
-    for i in population:
-        unit_code = encode(N, i)  # 获得编码
-        unit_w = 0  # 个体的总量
-        unit_v = 0  # 个体的价值
-        for j in range(N):
-            unit_w += int(unit_code[j]) * w[j]
-            unit_v += int(unit_code[j]) * v[j]
-        if unit_w <= W:
-            v_list.append(unit_v)
-        else:
-            v_list.append(0)  # 超重
-    p_list = []  # 每一个个体的概率
-    v_all = sum(v_list)
-    for i in range(n):
-        p_list.append(v_list[i] * 1.0 / v_all)
-    return p_list
+if __name__ == "__main__":
 
-# 根据适应性概率随机选择一个个体
+    CXPB, MUTPB, NGEN, popsize = 0.8, 0.3, 50, 100  # control parameters
 
+    up = [64, 64, 64, 64, 64, 64, 64, 64, 64, 64]  # upper range for variables
+    low = [-64, -64, -64, -64, -64, -64, -64, -
+           64, -64, -64]  # lower range for variables
+    parameter = [CXPB, MUTPB, NGEN, popsize, low, up]
 
-def RWS(population, plist):  # plist为总群个体抽中概率list
-    random.seed()
-    r = random.random()  # 获得随机数
-    c = 0
-    # print plist, r
-    for (index, item) in enumerate(plist):
-        c += item
-        if r < c:
-            return population[index]
-
-#  获得随机couple组
-
-
-def getRandomCouple(n):  # n:个体总数
-    random.seed()
-    selected = [0]*n  # 是否被选择了
-    couples = []  # 配对list
-    for i in range(n//2):
-        pair = []
-        while len(pair) < 2:
-            unit_index = random.randint(0, n-1)
-            if not selected[unit_index]:
-                pair.append(unit_index)
-                selected[unit_index] = True
-        couples.append(pair)
-    return couples
-
-
-def crossover(population, couples, cross_p, N):  # cross_p为交叉概率;N为编码长度
-    random.seed()
-    new_population = []
-    for pair in couples:
-        unit_one = encode(N, population[pair[0]])
-        unit_two = encode(N, population[pair[1]])
-        p = random.random()
-        if p >= (1 - cross_p):
-            # 交叉使用从随机位置交叉尾部
-            random_loc = random.randint(0, N-1)  # 获得随机位置
-            new_population.append(
-                unit_one[0:random_loc] + unit_two[random_loc:])
-            new_population.append(
-                unit_two[0:random_loc] + unit_one[random_loc:])
-        else:
-            new_population.append(unit_one)
-            new_population.append(unit_two)
-    for (index, unit) in enumerate(new_population):
-        new_population[index] = decode(unit)  # 解码
-    return list(set(new_population))
-
-
-def mutation(population, N, mutation_p):
-    # print(population, N, mutation_p)
-    new_population = []
-    random.seed()
-    for unit in population:
-        unit_code = encode(N, unit)
-        p = random.random()  # 获得随机概率
-        if p > (1 - mutation_p):
-            random_loc = random.randint(0, N-1)
-            v = unit_code[random_loc]
-            unit_code[random_loc] = '0' if v == '1' else '1'
-        new_population.append(decode(unit_code))
-    return list(set(new_population))
-
-
-# 变量设置
-generation_count = 50  # 迭代次数
-N = 4  # 物体总数
-n = pow(2, N)  # 种群个体总数
-w = [2, 3, 1, 5]  # 每个物体重量
-v = [4, 3, 2, 1]  # 每个物体价值
-W = 6  # 重量阈值
-population = []
-
-# 初始化种群
-for i in range(n):
-    population.append(i)
-print("Original population:", population)
-
-# 算法开始
-c = 0  # 当前迭代次数
-while c < generation_count:
-    print('-'*10+str(c)+'-'*10)
-
-    # 种群选择
-    plist = getRWSPList(population, w, v, W)  # 获得总群概率list
-    new_population = []
-    for i in range(n):  # 适者生存
-        new_population.append(RWS(population, plist))
-    new_population = list(set(new_population))
-    print("After selection:", new_population)
-    if len(new_population) == 1:
-        population = new_population
-        break
-
-    # 种群交叉
-    couples = getRandomCouple(len(new_population))  # 获得随机配对
-    new_population = crossover(new_population, couples, 0.8, N)
-    print("After crossover:", new_population)
-    if len(new_population) == 1:
-        population = new_population
-        break
-
-    # 种群变异
-    new_population = mutation(new_population, N, 0.1)
-    print("After mutation:" + str(new_population))
-    if len(new_population) == 1:
-        population = new_population
-        break
-
-    population = new_population
-
-    c += 1
-
-print(population)
+    run = GA(parameter)
+    run.GA_main()
