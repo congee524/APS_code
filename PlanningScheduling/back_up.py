@@ -5,6 +5,17 @@ import math
 from operator import itemgetter
 
 
+class Gene:
+    '''
+    This is a class to represent individual(Gene) in GA algorithom
+    each object of this class have two attribute: data, size
+    '''
+
+    def __init__(self, **data):
+        self.__dict__.update(data)
+        self.size = len(data['data'])  # length of gene
+
+
 class GA:
     '''
     This is a class of GA algorithm. 
@@ -19,26 +30,23 @@ class GA:
         Representation of Gene is a list: [b s0 u0 sita0 s1 u1 sita1 s2 u2 sita2]
 
         '''
-        self.para = parameter
-        self.popsize = self.para['popsize']
-        self.yield_time = self.para['yield_time']
-        self.prod_ind = self.para['prod_ind']
-        self.task_ind = self.para['task_ind']
-        self.line_num = len(self.yield_time)
-        self.task_num = len(self.yield_time[0])
-        self.prod_num = max(self.prod_ind)
-        self.totnum_task = len(self.prod_ind)
+        #parameter = [CXPB, MUTPB, NGEN, popsize, low, up]
+        self.parameter = parameter
+
+        low = self.parameter[4]
+        up = self.parameter[5]
+
+        self.bound = []
+        self.bound.append(low)
+        self.bound.append(up)
 
         pop = []
-        for _ in range(self.popsize):
-            geneinfo = [[] for _ in range(self.line_num)]
-            for i in range(1, self.totnum_task + 1):
-                while True:
-                    ran_line_id = random.randint(1, self.line_num)
-                    if self.yield_time[ran_line_id][self.prod_ind[i]] == -1:
-                        continue
-                    geneinfo[ran_line_id].append(i)
-                    break
+        for _ in range(self.parameter[3]):
+            geneinfo = []
+            for pos in range(len(low)):
+                # initialise popluation
+                geneinfo.append(random.uniform(
+                    self.bound[0][pos], self.bound[1][pos]))
 
             fitness = self.evaluate(geneinfo)  # evaluate each chromosome
             # store the chromosome and its fitness
@@ -97,7 +105,8 @@ class GA:
         pos1 = random.randrange(1, dim)
         pos2 = random.randrange(1, dim)
 
-        newoff = []  # offspring produced by cross operation
+        newoff = Gene(data=[])  # offspring produced by cross operation
+        newoff = []
         for i in range(dim):
             if (i >= min(pos1, pos2) and i <= max(pos1, pos2)):
                 newoff.append(geninfo2[i])
@@ -126,12 +135,12 @@ class GA:
         main frame work of GA
         '''
 
-        popsize = self.para['popsize']
+        popsize = self.parameter[3]
 
         print("Start of evolution")
 
         # Begin the evolution
-        for g in range(self.para['NGEN']):
+        for g in range(NGEN):
 
             print("-- Generation %i --" % g)
 
@@ -145,13 +154,11 @@ class GA:
                 # Select one individuals
                 offspring = random.choice(selectpop)
 
-                # cross two individuals with probability CXPB
-                if random.random() < self.para['CXPB']:
+                if random.random() < CXPB:  # cross two individuals with probability CXPB
                     cross_data = self.crossoperate(offspring)
                     offspring['data'] = cross_data
 
-                # mutate an individual with probability MUTPB
-                if random.random() < self.para['MUTPB']:
+                if random.random() < MUTPB:  # mutate an individual with probability MUTPB
                     mut_data = self.mutation(offspring, self.bound)
                     offspring['data'] = mut_data
                 offspring['fitness'] = self.evaluate(offspring['data'])
@@ -184,13 +191,12 @@ class GA:
 
 if __name__ == "__main__":
 
-    # control parameters
-    # prod_time = [[] for _ in range(parameter['prod_line_num'])]
-    yield_time = [[9, 8, -1, 7, 6], [32, 4, 8, 1, 4],
-                  [1, -1, -1, -1, -1], [6, 6, -1, 4, -1], [6, -1, 9, 2, 6]]
-    prod_ind = [1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 3]
-    task_ind = [5, 2, 1, 3, 1, 4, 4, 4, 2, 2, 1, 3, 5]
-    parameter = {'CXPB': 0.7, 'MUTPB': 0.7, 'NGEN': 50, 'popsize': 100, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
-                 'task_ind': task_ind}
+    CXPB, MUTPB, NGEN, popsize = 0.8, 0.3, 50, 100  # control parameters
+
+    up = [64, 64, 64, 64, 64, 64, 64, 64, 64, 64]  # upper range for variables
+    low = [-64, -64, -64, -64, -64, -64, -64, -
+           64, -64, -64]  # lower range for variables
+    parameter = [CXPB, MUTPB, NGEN, popsize, low, up]
+
     run = GA(parameter)
     run.GA_main()
