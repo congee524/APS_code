@@ -77,7 +77,7 @@ class GA:
         first_task_ind = np.array(first_task_ind)
         last_task_ind = np.array(last_task_ind)
         pre_task_ind = first_task_ind
-        task_line_loca = get_pos(individual)
+        task_line_loca = self.get_pos(individual)
 
         while True:
             for i in range(self.prod_num):
@@ -187,13 +187,13 @@ class GA:
             task_inline_pos[inline[i]] = i
 
         for _ in range(len(tmp_line) * 2):
-            ramdom.shuffle(tmp_line)
+            random.shuffle(tmp_line)
             left = tmp_line[0]
             right = tmp_line[1]
             if self.prod_ind[left] == self.prod_ind[right]:
                 continue
 
-            task_line_loca = get_pos(geninfo)
+            task_line_loca = self.get_pos(geninfo)
             left_ex_pos = task_line_loca[right]
             right_ex_pos = task_line_loca[left]
             left_firsttask = np.where(
@@ -201,13 +201,13 @@ class GA:
             right_firsttask = np.where(
                 self.prod_ind == self.prod_ind[right])[0][0]
 
-            int flag = 0
+            flag = 0
             for pre_task_ind in range(left_firsttask, left):
                 pre_pos = task_line_loca[pre_task_ind]
                 if (pre_pos[0] == left_ex_pos[0]) and (pre_pos[1] > left_ex_pos[1]):
                     flag = 1
                     break
-            if (flag == 1):
+            if flag == 1:
                 continue
 
             for pre_task_ind in range(right_firsttask, right):
@@ -215,7 +215,7 @@ class GA:
                 if (pre_pos[0] == right_ex_pos[0]) and (pre_pos[1] > right_ex_pos[1]):
                     flag = 1
                     break
-            if (flag == 1):
+            if flag == 1:
                 continue
 
             geninfo[left_ex_pos[0]][left_ex_pos[1]] = left
@@ -226,46 +226,39 @@ class GA:
 
     def disrupt_prod(self, offspring):
         geninfo = offspring['data']
+
+        while True:
+            tmp_line = list(range(self.line_num))
+            random.shuffle(tmp_line)
+            if len(geninfo[tmp_line[0]]) > 0:
+                break
+
+        inline = geninfo[tmp_line[0]]
+        exline = geninfo[tmp_line[1]]
+        tar = random.randint(0, len(inline) - 1)
+        tar_task = inline[tar]
+        tar_firsttask = np.where(
+            self.prod_ind == self.prod_ind[tar_task])[0][0]
+        tar_lasttask = np.where(
+            self.prod_ind == self.prod_ind[tar_task])[0][-1]
+
+        task_line_loca = self.get_pos(geninfo)
+
+        bound_left, bound_right = 0, len(exline)
+        for pre_task_ind in range(tar_firsttask, tar_lasttask + 1):
+            pre_pos = task_line_loca[pre_task_ind]
+            if (pre_pos[0] == tmp_line[1]):
+                if (pre_task_ind < tar_task):
+                    bound_left = pre_pos[1] + 1
+                elif (pre_task_ind > tar_task):
+                    bound_right = pre_pos[1]
+                    break
+
+        geninfo[tmp_line[1]].insert(random.randint(
+            bound_left, bound_right), tar_task)
+        del geninfo[tmp_line[0]][tar]
+
         return geninfo
-
-    def crossoperate(self, offspring):
-        '''
-        cross operation
-        '''
-        dim = len(offspring['data'])
-
-        # Gene's data of first offspring chosen from the selected pop
-        geninfo1 = offspring['data']
-        # Gene's data of second offspring chosen from the selected pop
-        geninfo2 = offspring['data']
-
-        # select a position in the range from 0 to dim-1,
-        pos1 = random.randrange(1, dim)
-        pos2 = random.randrange(1, dim)
-
-        newoff = []  # offspring produced by cross operation
-        for i in range(dim):
-            if (i >= min(pos1, pos2) and i <= max(pos1, pos2)):
-                newoff.append(geninfo2[i])
-                # the gene data of offspring produced by cross operation is from the second offspring in the range [min(pos1,pos2),max(pos1,pos2)]
-            else:
-                newoff.append(geninfo1[i])
-                # the gene data of offspring produced by cross operation is from the frist offspring in the range [min(pos1,pos2),max(pos1,pos2)]
-
-        return newoff
-
-    def mutation(self, crossoff, bound):
-        '''
-        mutation operation
-        '''
-
-        dim = len(crossoff['data'])
-
-        # chose a position in crossoff to perform mutation.
-        pos = random.randrange(1, dim)
-
-        crossoff['data'][pos] = random.uniform(bound[0][pos], bound[1][pos])
-        return crossoff['data']
 
     def GA_main(self):
         '''
