@@ -27,7 +27,6 @@ class GA:
         self.task_ind = np.array(self.para['task_ind'])
         self.prod_prio = np.array(self.para['prod_prio'])
         self.line_num = self.yield_time.shape[0]
-        self.task_num = len(self.yield_time[0])
         self.prod_num = self.prod_prio.shape[0]
         self.ex_time = self.para['ex_time']
         self.totnum_task = self.prod_ind.shape[0]
@@ -68,7 +67,7 @@ class GA:
                                    for j in self.task_ind[individual[i]]]
         line_worktime = np.array([sum(i) for i in line_preworktime])
 
-        finish_time_task = [-1 for _ in range(self.task_num)]
+        finish_time_task = [-1 for _ in range(self.totnum_task)]
         first_task_ind = []
         last_task_ind = []
         for i in range(self.prod_num):
@@ -137,7 +136,7 @@ class GA:
         finish_time_task = np.array(finish_time_task)
         finish_time_prod = finish_time_task[last_task_ind]
 
-        fitness = np.sum(finish_time_prod * self.prod_prio) * (1 + var_line)
+        fitness = np.sum(finish_time_prod * self.prod_prio) * (1 + var_line**2)
         return fitness
 
     def selectBest(self, pop):
@@ -186,7 +185,7 @@ class GA:
         for i in range(len(inline)):
             task_inline_pos[inline[i]] = i
 
-        for _ in range(len(tmp_line) * 2):
+        for _ in range(len(tmp_line) ** 2):
             random.shuffle(tmp_line)
             left = tmp_line[0]
             right = tmp_line[1]
@@ -226,9 +225,11 @@ class GA:
 
     def disrupt_prod(self, offspring):
         geninfo = offspring['data']
+        tmp_line = list(range(self.line_num))
+        if (len(tmp_line) < 2):
+            return geninfo
 
         while True:
-            tmp_line = list(range(self.line_num))
             random.shuffle(tmp_line)
             if len(geninfo[tmp_line[0]]) > 0:
                 break
