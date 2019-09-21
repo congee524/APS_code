@@ -4,6 +4,7 @@ import random
 import math
 from operator import itemgetter
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class GA:
@@ -30,6 +31,8 @@ class GA:
         self.prod_num = self.prod_prio.shape[0]
         self.ex_time = self.para['ex_time']
         self.totnum_task = self.prod_ind.shape[0]
+        self.rec_std = []
+        self.rec_mean = []
 
         pop = []
         for _ in range(self.popsize):
@@ -61,8 +64,8 @@ class GA:
     def evaluate(self, individual):
         # return fitness value
         # individual is the task id on each line
-        print("  evaluate")
-        print("geninfo: %s" % individual)
+        # print("  evaluate")
+        # print("geninfo: %s" % individual)
         individual = np.array(individual)
         line_preworktime = [[] for _ in range(self.prod_num)]
         for i in range(self.prod_num):
@@ -192,7 +195,7 @@ class GA:
         s_inds = sorted(individuals, key=itemgetter(
             "fitness"), reverse=True)  # sort the pop by the reference of 1/fitness
         # sum up the 1/fitness of the whole pop
-        sum_fits = sum(ind['fitness'] for ind in individuals)
+        sum_fits = sum(1.0 / ind['fitness'] for ind in individuals)
 
         chosen = []
         for _ in range(k):
@@ -200,7 +203,7 @@ class GA:
             u = random.random() * sum_fits
             sum_ = 0
             for ind in s_inds:
-                sum_ += ind['fitness']  # sum up the 1/fitness
+                sum_ += 1.0 / ind['fitness']  # sum up the 1/fitness
                 if sum_ > u:
                     # when the sum of 1/fitness is bigger than u, choose the one, which means u is in the range of [sum(1,2,...,n-1),sum(1,2,...,n)] and is time to choose the one ,namely n-th individual in the pop
                     chosen.append(ind)
@@ -209,7 +212,7 @@ class GA:
         return chosen
 
     def disrupt_line(self, offspring):
-        print("  disrupt_line")
+        # print("  disrupt_line")
         geninfo = offspring['data']
         tarind_line = random.randint(0, self.line_num - 1)
         for _ in range(self.line_num * 2):
@@ -223,7 +226,7 @@ class GA:
         tmp_line = inline.copy()
         left = -1
         right = -1
-        print("before geninfo[tarind_line]: %s" % geninfo[tarind_line])
+        # print("before geninfo[tarind_line]: %s" % geninfo[tarind_line])
         for _ in range(len(tmp_line) ** 2):
             random.shuffle(tmp_line)
             if (tmp_line[0] < tmp_line[1]):
@@ -234,10 +237,10 @@ class GA:
                 left = tmp_line[1]
             if self.prod_ind[left] == self.prod_ind[right]:
                 continue
-            print("line %i left, right: (%i, %i)" % (tarind_line, left, right))
-            print("prod_ind %s" % self.prod_ind)
-            print("line %i (left, right): prod_ind (%i, %i)" %
-                  (tarind_line, self.prod_ind[left], self.prod_ind[right]))
+            # print("line %i left, right: (%i, %i)" % (tarind_line, left, right))
+            # print("prod_ind %s" % self.prod_ind)
+            # print("line %i (left, right): prod_ind (%i, %i)" %
+            #       (tarind_line, self.prod_ind[left], self.prod_ind[right]))
             task_line_loca = self.get_pos(geninfo)
             right_ex_pos = task_line_loca[left]
             right_firsttask = np.where(
@@ -276,12 +279,13 @@ class GA:
 
             break
 
-        print("after geninfo[tarind_line]: %s" % geninfo[tarind_line])
+        # print("after geninfo[tarind_line]: %s" % geninfo[tarind_line])
         return geninfo
 
     def disrupt_prod(self, offspring):
         print("  disrupt_prod")
         geninfo = offspring['data']
+        print("before disrupt_prod geninfo: %s" % geninfo)
         tmp_line = list(range(self.line_num))
         if (len(tmp_line) < 2):
             return geninfo
@@ -357,9 +361,9 @@ class GA:
                     offspring['data'] = disline_data
 
                 # mutate an individual with probability MUTPB
-                if random.random() < self.para['PRODPB']:
-                    disprod_data = self.disrupt_prod(offspring)
-                    offspring['data'] = disprod_data
+                # if random.random() < self.para['PRODPB']:
+                #     disprod_data = self.disrupt_prod(offspring)
+                #     offspring['data'] = disprod_data
 
                 offspring['fitness'] = self.evaluate(offspring['data'])
                 nextoff.append(offspring)
@@ -387,6 +391,19 @@ class GA:
             print("  Std of currrent pop: %s" % std)
 
         print("-- End of (successful) evolution --")
+        x = list(range(1, self.para['NGEN'] + 1))
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax1.plot(x, run.rec_mean, 'r', label='mean value')
+        ax1.legend(loc=1)
+        ax1.set_ylabel('mean value')
+        ax2 = ax1.twinx()  # this is the important function
+        ax2.plot(x, run.rec_std, 'b', label="standard deviation")
+        ax2.legend(loc=2)
+        ax2.set_ylabel('standard deviation')
+        ax2.set_xlabel('Generation')
+        plt.title('Trend of population standard deviation and mean value')
+        plt.show()
 
 
 if __name__ == "__main__":
@@ -402,7 +419,7 @@ if __name__ == "__main__":
     parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 50, 'popsize': 100, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
                  """
-    parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 5, 'popsize': 10, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
+    parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 50, 'popsize': 500, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
     run = GA(parameter)
     run.GA_main()
