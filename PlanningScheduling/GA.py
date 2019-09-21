@@ -62,6 +62,7 @@ class GA:
         # return fitness value
         # individual is the task id on each line
         print("  evaluate")
+        print("geninfo: %s" % individual)
         individual = np.array(individual)
         line_preworktime = [[] for _ in range(self.prod_num)]
         for i in range(self.prod_num):
@@ -81,19 +82,26 @@ class GA:
         task_line_loca = self.get_pos(individual)
 
         while True:
+            # print(individual)
+            # print(finish_time_task)
             if np.sum(pre_task_ind > last_task_ind) >= self.prod_num:
                 break
             for i in range(self.prod_num):
                 if (pre_task_ind[i] > last_task_ind[i]):
                     continue
                 pre_task = pre_task_ind[i]
+                # print(" pre_task in evaluate %i" % pre_task)
                 pre_pos = task_line_loca[pre_task]
                 pre_task_time = self.yield_time[pre_pos[0]
                                                 ][self.task_ind[pre_task]]
+                # print("pre_task_time %i" % pre_task_time)
                 if (pre_task == 0):
                     if (pre_pos[1] == 0):
                         finish_time_task[pre_task] = pre_task_time
                         pre_task_ind[i] += 1
+                        # print("00")
+                        # print(finish_time_task)
+                        # print(first_task_ind)
                         continue
                     else:
                         last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
@@ -103,6 +111,9 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_line_task] + \
                                 self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            # print("000")
+                            # print(finish_time_task)
+                            # print(first_task_ind)
                             continue
 
                 last_pos = task_line_loca[pre_task - 1]
@@ -114,6 +125,8 @@ class GA:
                     if (pre_pos[1] == 0):
                         finish_time_task[pre_task] = pre_task_time
                         pre_task_ind[i] += 1
+                        # print("111")
+                        # print(finish_time_task)
                         continue
                     else:
                         last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
@@ -123,6 +136,8 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_line_task] + \
                                 isn_proce * self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            # print("222")
+                            # print(finish_time_task)
                             continue
                 else:
                     last_prod_task = pre_task - 1
@@ -133,6 +148,8 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_prod_task] + \
                                 isn_proce * self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            # print("333")
+                            # print(finish_time_task)
                             continue
                         else:
                             last_line_task = individual[pre_pos[0]
@@ -143,6 +160,8 @@ class GA:
                                 finish_time_task[pre_task] = max(
                                     finish_time_task[last_line_task], finish_time_task[last_prod_task]) + isn_proce*self.ex_time + pre_task_time
                                 pre_task_ind[i] += 1
+                                # print("444")
+                                # print(finish_time_task)
                                 continue
 
         var_line = 0
@@ -200,48 +219,64 @@ class GA:
         if (len(geninfo[tarind_line]) < 2):
             return geninfo
 
-        inline = geninfo[tarind_line]
-        tmp_line = inline
-        task_inline_pos = [-1 for _ in range(self.totnum_task)]
-        for i in range(len(inline)):
-            task_inline_pos[inline[i]] = i
-
+        inline = geninfo[tarind_line].copy()
+        tmp_line = inline.copy()
+        left = -1
+        right = -1
+        print("before geninfo[tarind_line]: %s" % geninfo[tarind_line])
         for _ in range(len(tmp_line) ** 2):
             random.shuffle(tmp_line)
-            left = tmp_line[0]
-            right = tmp_line[1]
+            if (tmp_line[0] < tmp_line[1]):
+                left = tmp_line[0]
+                right = tmp_line[1]
+            else:
+                right = tmp_line[0]
+                left = tmp_line[1]
             if self.prod_ind[left] == self.prod_ind[right]:
                 continue
-
+            print("line %i left, right: (%i, %i)" % (tarind_line, left, right))
+            print("prod_ind %s" % self.prod_ind)
+            print("line %i (left, right): prod_ind (%i, %i)" %
+                  (tarind_line, self.prod_ind[left], self.prod_ind[right]))
             task_line_loca = self.get_pos(geninfo)
-            left_ex_pos = task_line_loca[right]
             right_ex_pos = task_line_loca[left]
-            left_firsttask = np.where(
-                self.prod_ind == self.prod_ind[left])[0][0]
             right_firsttask = np.where(
                 self.prod_ind == self.prod_ind[right])[0][0]
 
             flag = 0
-            for pre_task_ind in range(left_firsttask, left):
+            for pre_task_ind in range(right_firsttask, right + 1):
                 pre_pos = task_line_loca[pre_task_ind]
-                if (pre_pos[0] == left_ex_pos[0]) and (pre_pos[1] > left_ex_pos[1]):
-                    flag = 1
+                for solve_task_ind in inline[right_ex_pos[1]:right]:
+                    solve_prod_ind = self.prod_ind[solve_task_ind]
+                    solve_firsttask = np.where(
+                        self.prod_ind == solve_prod_ind)[0][0]
+                    for pre_solve_task in range(solve_firsttask, solve_task_ind + 1):
+                        pre_solve_pos = task_line_loca[pre_solve_task]
+                        if ((pre_solve_pos[0] == pre_pos[0]) and (pre_pos[1] > pre_solve_pos[1])):
+                            flag = 1
+                            break
+                    if (flag == 1):
+                        break
+                if (flag == 1):
                     break
             if flag == 1:
                 continue
 
-            for pre_task_ind in range(right_firsttask, right):
-                pre_pos = task_line_loca[pre_task_ind]
-                if (pre_pos[0] == right_ex_pos[0]) and (pre_pos[1] > right_ex_pos[1]):
-                    flag = 1
-                    break
-            if flag == 1:
-                continue
+            # flag = 0
+            # for pre_task_ind in range(left_firsttask, left):
+            #     pre_pos = task_line_loca[pre_task_ind]
+            #     if (pre_pos[0] == left_ex_pos[0]) and (pre_pos[1] > left_ex_pos[1]):
+            #         flag = 1
+            #         break
+            # if flag == 1:
+            #     continue
 
-            geninfo[left_ex_pos[0]][left_ex_pos[1]] = left
-            geninfo[right_ex_pos[0]][right_ex_pos[1]] = right
+            del geninfo[right_ex_pos[0]][task_line_loca[right][1]]
+            geninfo[right_ex_pos[0]].insert(right_ex_pos[1], right)
+
             break
 
+        print("after geninfo[tarind_line]: %s" % geninfo[tarind_line])
         return geninfo
 
     def disrupt_prod(self, offspring):
@@ -256,17 +291,17 @@ class GA:
             if (len(geninfo[tmp_line[0]]) > 0):
                 break
 
-        inline = geninfo[tmp_line[0]]
-        exline = geninfo[tmp_line[1]]
+        inline = geninfo[tmp_line[0]].copy()
+        exline = geninfo[tmp_line[1]].copy()
 
         tar = 0
         tar_task = 0
         for _ in range(len(inline) * 2):
             tar = random.randint(0, len(inline) - 1)
             tar_task = inline[tar]
-            if (yield_time[tmp_line[1]][tar_task] != -1):
+            if (yield_time[tmp_line[1]][self.task_ind[tar_task]] != -1):
                 break
-        if (yield_time[tmp_line[1]][tar_task] == -1):
+        if (yield_time[tmp_line[1]][self.task_ind[tar_task]] == -1):
             return geninfo
 
         tar_firsttask = np.where(
