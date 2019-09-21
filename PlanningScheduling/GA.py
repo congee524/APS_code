@@ -231,13 +231,22 @@ class GA:
 
         while True:
             random.shuffle(tmp_line)
-            if len(geninfo[tmp_line[0]]) > 0:
+            if (len(geninfo[tmp_line[0]]) > 0):
                 break
 
         inline = geninfo[tmp_line[0]]
         exline = geninfo[tmp_line[1]]
-        tar = random.randint(0, len(inline) - 1)
-        tar_task = inline[tar]
+
+        tar = 0
+        tar_task = 0
+        for _ in range(len(inline) * 2):
+            tar = random.randint(0, len(inline) - 1)
+            tar_task = inline[tar]
+            if (yield_time[tmp_line[1]][tar_task] != -1):
+                break
+        if (yield_time[tmp_line[1]][tar_task] == -1):
+            return geninfo
+
         tar_firsttask = np.where(
             self.prod_ind == self.prod_ind[tar_task])[0][0]
         tar_lasttask = np.where(
