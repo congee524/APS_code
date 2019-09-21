@@ -37,7 +37,7 @@ class GA:
             for i in range(0, self.totnum_task):
                 while True:
                     ran_line_id = random.randint(0, self.line_num - 1)
-                    if self.yield_time[ran_line_id][self.prod_ind[i]] == -1:
+                    if self.yield_time[ran_line_id][self.task_ind[i]] == -1:
                         continue
                     geneinfo[ran_line_id].append(i)
                     break
@@ -93,10 +93,14 @@ class GA:
                 pre_pos = task_line_loca[pre_task]
                 pre_task_time = self.yield_time[pre_pos[0]
                                                 ][self.task_ind[pre_task]]
+                print("pre_task_time %i" % pre_task_time)
                 if (pre_task == 0):
                     if (pre_pos[1] == 0):
                         finish_time_task[pre_task] = pre_task_time
                         pre_task_ind[i] += 1
+                        print("00")
+                        print(finish_time_task)
+                        print(first_task_ind)
                         continue
                     else:
                         last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
@@ -106,6 +110,9 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_line_task] + \
                                 self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            print("000")
+                            print(finish_time_task)
+                            print(first_task_ind)
                             continue
 
                 last_pos = task_line_loca[pre_task - 1]
@@ -117,6 +124,8 @@ class GA:
                     if (pre_pos[1] == 0):
                         finish_time_task[pre_task] == pre_task_time
                         pre_task_ind[i] += 1
+                        print("111")
+                        print(finish_time_task)
                         continue
                     else:
                         last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
@@ -126,6 +135,8 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_line_task] + \
                                 isn_proce * self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            print("222")
+                            print(finish_time_task)
                             continue
                 else:
                     last_prod_task = pre_task - 1
@@ -136,6 +147,8 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_prod_task] + \
                                 isn_proce * self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            print("333")
+                            print(finish_time_task)
                             continue
                         else:
                             last_line_task = individual[pre_pos[0]
@@ -146,6 +159,8 @@ class GA:
                                 finish_time_task[pre_task] = max(
                                     finish_time_task[last_line_task], finish_time_task[last_prod_task]) + isn_proce*self.ex_time + pre_task_time
                                 pre_task_ind[i] += 1
+                                print("444")
+                                print(finish_time_task)
                                 continue
 
         var_line = 0
