@@ -49,6 +49,7 @@ class GA:
         self.pop = pop
         # store the best chromosome in the population
         self.bestindividual = self.selectBest(self.pop)
+        print("  Finish initial ")
 
     def get_pos(self, individual):
         task_line_loca = [-1 for _ in range(self.totnum_task)]
@@ -60,6 +61,7 @@ class GA:
     def evaluate(self, individual):
         # return fitness value
         # individual is the task id on each line
+        print("  evaluate")
         individual = np.array(individual)
         line_preworktime = [[] for _ in range(self.prod_num)]
         for i in range(self.prod_num):
@@ -75,26 +77,47 @@ class GA:
             last_task_ind.append(np.where(self.prod_ind == i)[0][-1])
         first_task_ind = np.array(first_task_ind)
         last_task_ind = np.array(last_task_ind)
-        pre_task_ind = first_task_ind
+        pre_task_ind = first_task_ind.copy()
         task_line_loca = self.get_pos(individual)
 
         while True:
+            print(individual)
+            print(finish_time_task)
+            if np.sum(pre_task_ind > last_task_ind) >= self.prod_num:
+                break
             for i in range(self.prod_num):
-                if (pre_task_ind[i] > first_task_ind[i]):
+                if (pre_task_ind[i] > last_task_ind[i]):
                     continue
                 pre_task = pre_task_ind[i]
+                print(" pre_task in evaluate %i" % pre_task)
                 pre_pos = task_line_loca[pre_task]
+                pre_task_time = self.yield_time[pre_pos[0]
+                                                ][self.task_ind[pre_task]]
+                if (pre_task == 0):
+                    if (pre_pos[1] == 0):
+                        finish_time_task[pre_task] = pre_task_time
+                        pre_task_ind[i] += 1
+                        continue
+                    else:
+                        last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
+                        if (finish_time_task[last_line_task] == -1):
+                            continue
+                        else:
+                            finish_time_task[pre_task] = finish_time_task[last_line_task] + \
+                                self.ex_time + pre_task_time
+                            pre_task_ind[i] += 1
+                            continue
+
                 last_pos = task_line_loca[pre_task - 1]
                 isn_proce = True
                 if ((pre_pos[0] == last_pos[0]) and (pre_pos[1] == last_pos[1] + 1)):
                     isn_proce = False
 
-                pre_task_time = self.yield_time[pre_pos[0]
-                                                ][self.task_ind[pre_task]]
                 if (pre_task == first_task_ind[i]):
                     if (pre_pos[1] == 0):
                         finish_time_task[pre_task] == pre_task_time
                         pre_task_ind[i] += 1
+                        continue
                     else:
                         last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
                         if (finish_time_task[last_line_task] == -1):
@@ -103,6 +126,7 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_line_task] + \
                                 isn_proce * self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            continue
                 else:
                     last_prod_task = pre_task - 1
                     if (finish_time_task[last_prod_task] == -1):
@@ -112,6 +136,7 @@ class GA:
                             finish_time_task[pre_task] = finish_time_task[last_prod_task] + \
                                 isn_proce * self.ex_time + pre_task_time
                             pre_task_ind[i] += 1
+                            continue
                         else:
                             last_line_task = individual[pre_pos[0]
                                                         ][pre_pos[1] - 1]
@@ -121,9 +146,7 @@ class GA:
                                 finish_time_task[pre_task] = max(
                                     finish_time_task[last_line_task], finish_time_task[last_prod_task]) + isn_proce*self.ex_time + pre_task_time
                                 pre_task_ind[i] += 1
-
-            if np.sum(pre_task_ind > last_task_ind) >= self.prod_num:
-                break
+                                continue
 
         var_line = 0
         if (np.max(line_worktime) == np.min(line_worktime)):
@@ -170,6 +193,7 @@ class GA:
         return chosen
 
     def disrupt_line(self, offspring):
+        print("  disrupt_line")
         geninfo = offspring['data']
         tarind_line = random.randint(0, self.line_num - 1)
         for _ in range(self.line_num * 2):
@@ -224,6 +248,7 @@ class GA:
         return geninfo
 
     def disrupt_prod(self, offspring):
+        print("  disrupt_prod")
         geninfo = offspring['data']
         tmp_line = list(range(self.line_num))
         if (len(tmp_line) < 2):
@@ -341,7 +366,11 @@ if __name__ == "__main__":
     prod_ind = [0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2]
     task_ind = [4, 1, 0, 2, 0, 3, 3, 3, 1, 1, 0, 2, 4]
     prod_prio = [5, 3, 3]
+    """
     parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 50, 'popsize': 100, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
+                 'task_ind': task_ind, "prod_prio": prod_prio}
+                 """
+    parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 5, 'popsize': 10, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
     run = GA(parameter)
     run.GA_main()
