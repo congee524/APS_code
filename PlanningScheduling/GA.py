@@ -376,8 +376,10 @@ class GA:
 
             length = len(self.pop)
             mean = sum(fits) / length
+            self.rec_mean.append(mean)
             sum2 = sum(x*x for x in fits)
-            std = abs(sum2 / length - mean**2)**0.5
+            std = abs(sum2 / length - mean ** 2) ** 0.5
+            self.rec_std.append(std)
             best_ind = self.selectBest(self.pop)
 
             if best_ind['fitness'] < self.bestindividual['fitness']:
@@ -394,11 +396,11 @@ class GA:
         x = list(range(1, self.para['NGEN'] + 1))
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
-        ax1.plot(x, run.rec_mean, 'r', label='mean value')
+        ax1.plot(x, self.rec_mean, 'r', label='mean value')
         ax1.legend(loc=1)
         ax1.set_ylabel('mean value')
         ax2 = ax1.twinx()  # this is the important function
-        ax2.plot(x, run.rec_std, 'b', label="standard deviation")
+        ax2.plot(x, self.rec_std, 'b', label="standard deviation")
         ax2.legend(loc=2)
         ax2.set_ylabel('standard deviation')
         ax2.set_xlabel('Generation')
