@@ -55,6 +55,38 @@ class GA:
         self.bestindividual = self.selectBest(self.pop)
         print("  Finish initial ")
 
+    def selectBest(self, pop):
+        '''
+        select the best individual from pop
+        '''
+        s_inds = sorted(pop, key=itemgetter("fitness"), reverse=False)
+        return s_inds[0]
+
+    def selection(self, individuals, k):
+        '''
+        select two individuals from pop
+        '''
+        s_inds = sorted(individuals, key=itemgetter(
+            "fitness"), reverse=True)  # sort the pop by the reference of fitness
+        f_inds = sorted(individuals, key=itemgetter(
+            "fitness"), reverse=False)  # sort the pop
+        # sum up the 1/fitness of the whole pop
+        sum_fits = sum(ind['fitness'] for ind in individuals)
+
+        chosen = []
+        for _ in range(k):
+            # randomly produce a num in the range of [0, sum_fits]
+            u = random.random() * sum_fits
+            sum_ = 0
+            for li, ind in enumerate(s_inds):
+                sum_ += ind['fitness']  # sum up the 1/fitness
+                if sum_ > u:
+                    # when the sum of 1/fitness is bigger than u, choose the one, which means u is in the range of [sum(1,2,...,n-1),sum(1,2,...,n)] and is time to choose the one ,namely n-th individual in the pop
+                    chosen.append(f_inds[li])
+                    break
+
+        return chosen
+
     def get_pos(self, individual):
         task_line_loca = [-1 for _ in range(self.totnum_task)]
         for ind1, li in enumerate(individual):
@@ -69,22 +101,19 @@ class GA:
             return - 1
 
         pre_pos = task_line_loca[task_id]
-        line_req = -1
-        prod_req = -1
+        line_req, prod_req, line_req_time, prod_req_time = -1, -1, -1, -1
         if pre_pos[1] > 0:
             line_req = individual[pre_pos[0]][pre_pos[1] - 1]
         if task_id != np.where(self.prod_ind == self.prod_ind[task_id])[0][0]:
             prod_req = task_id - 1
 
         finish_time_status[task_id] = -1
-        line_req_time = -1
-        prod_req_time = -1
+
         if line_req != -1:
             line_req_time = self.get_finish_time(
                 individual, line_req, task_line_loca, finish_time_task, finish_time_status)
             if line_req_time == -1:
                 return - 1
-
         if prod_req != -1:
             prod_req_time = self.get_finish_time(
                 individual, prod_req, task_line_loca, finish_time_task, finish_time_status)
@@ -96,7 +125,6 @@ class GA:
             last_pos = task_line_loca[prod_req]
             if ((pre_pos[0] == last_pos[0]) and (pre_pos[1] == last_pos[1] + 1)):
                 isn_proce = False
-
         if line_req_time == -1 and prod_req_time == -1:
             isn_proce = False
 
@@ -107,13 +135,12 @@ class GA:
         else:
             finish_time_task[task_id] = max(
                 prod_req_time, line_req_time) + isn_proce*self.ex_time + pre_task_time
+
         return finish_time_task[task_id]
 
     def evaluate(self, individual):
         # return fitness value
         # individual is the task id on each line
-        # print("  evaluate")
-        # print("geninfo: %s" % individual)
         individual = np.array(individual)
         line_preworktime = [[] for _ in range(self.prod_num)]
         for i in range(self.prod_num):
@@ -136,9 +163,8 @@ class GA:
 
         for i in range(self.totnum_task):
             if (self.get_finish_time(individual, i, task_line_loca, finish_time_task, finish_time_status) == -1):
-                print("go wrong!")
+                print("Populations with unsatisfactory constraints emerged!")
                 exit()
-                return -1
 
         var_line = 0
         if (np.max(line_worktime) == np.min(line_worktime)):
@@ -154,36 +180,6 @@ class GA:
         fitness = np.sum(finish_time_prod * self.prod_prio) * (1 + var_line**2)
         return fitness
 
-    def selectBest(self, pop):
-        '''
-        select the best individual from pop
-        '''
-        s_inds = sorted(pop, key=itemgetter("fitness"), reverse=False)
-        return s_inds[0]
-
-    def selection(self, individuals, k):
-        '''
-        select two individuals from pop
-        '''
-        s_inds = sorted(individuals, key=itemgetter(
-            "fitness"), reverse=True)  # sort the pop by the reference of 1/fitness
-        # sum up the 1/fitness of the whole pop
-        sum_fits = sum(1.0 / ind['fitness'] for ind in individuals)
-
-        chosen = []
-        for _ in range(k):
-            # randomly produce a num in the range of [0, sum_fits]
-            u = random.random() * sum_fits
-            sum_ = 0
-            for ind in s_inds:
-                sum_ += 1.0 / ind['fitness']  # sum up the 1/fitness
-                if sum_ > u:
-                    # when the sum of 1/fitness is bigger than u, choose the one, which means u is in the range of [sum(1,2,...,n-1),sum(1,2,...,n)] and is time to choose the one ,namely n-th individual in the pop
-                    chosen.append(ind)
-                    break
-
-        return chosen
-
     def disrupt_line(self, offspring):
         # print("  disrupt_line")
         geninfo = offspring['data']
@@ -196,63 +192,33 @@ class GA:
             return geninfo
 
         inline = geninfo[tarind_line].copy()
-        tmp_line = inline.copy()
-        left = -1
-        right = -1
+        ori_task_line_loca = self.get_pos(geninfo)
+
+        left, right = -1, -1
         # print("before geninfo[tarind_line]: %s" % geninfo[tarind_line])
-        for _ in range(len(tmp_line) ** 2):
-            random.shuffle(tmp_line)
-            if (tmp_line[0] < tmp_line[1]):
-                left = tmp_line[0]
-                right = tmp_line[1]
-            else:
-                right = tmp_line[0]
-                left = tmp_line[1]
-            if self.prod_ind[left] == self.prod_ind[right]:
-                continue
-            # print("line %i left, right: (%i, %i)" % (tarind_line, left, right))
-            # print("prod_ind %s" % self.prod_ind)
-            # print("line %i (left, right): prod_ind (%i, %i)" %
-            #       (tarind_line, self.prod_ind[left], self.prod_ind[right]))
+        for _ in range(len(inline) ** 2):
+            random.shuffle(inline)
+            left = inline[0]
+            right = inline[1]
+            geninfo[tarind_line][ori_task_line_loca[left][1]] = right
+            geninfo[tarind_line][ori_task_line_loca[right][1]] = left
+
+            finish_time_task = [-1 for _ in range(self.totnum_task)]
+            finish_time_status = [0 for _ in range(self.totnum_task)]
             task_line_loca = self.get_pos(geninfo)
-            right_ex_pos = task_line_loca[left]
-            right_firsttask = np.where(
-                self.prod_ind == self.prod_ind[right])[0][0]
 
-            flag = 0
-            for pre_task_ind in range(right_firsttask, right + 1):
-                pre_pos = task_line_loca[pre_task_ind]
-                for solve_task_ind in inline[right_ex_pos[1]:right]:
-                    solve_prod_ind = self.prod_ind[solve_task_ind]
-                    solve_firsttask = np.where(
-                        self.prod_ind == solve_prod_ind)[0][0]
-                    for pre_solve_task in range(solve_firsttask, solve_task_ind + 1):
-                        pre_solve_pos = task_line_loca[pre_solve_task]
-                        if ((pre_solve_pos[0] == pre_pos[0]) and (pre_pos[1] > pre_solve_pos[1])):
-                            flag = 1
-                            break
-                    if (flag == 1):
-                        break
-                if (flag == 1):
+            flag = False
+            for i in range(self.totnum_task):
+                if (self.get_finish_time(geninfo, i, task_line_loca, finish_time_task, finish_time_status) == -1):
+                    flag = True
                     break
-            if flag == 1:
+
+            if (flag):
+                geninfo[tarind_line][ori_task_line_loca[left][1]] = left
+                geninfo[tarind_line][ori_task_line_loca[right][1]] = right
                 continue
-
-            # flag = 0
-            # for pre_task_ind in range(left_firsttask, left):
-            #     pre_pos = task_line_loca[pre_task_ind]
-            #     if (pre_pos[0] == left_ex_pos[0]) and (pre_pos[1] > left_ex_pos[1]):
-            #         flag = 1
-            #         break
-            # if flag == 1:
-            #     continue
-
-            del geninfo[right_ex_pos[0]][task_line_loca[right][1]]
-            geninfo[right_ex_pos[0]].insert(right_ex_pos[1], right)
-
-            break
-
-        # print("after geninfo[tarind_line]: %s" % geninfo[tarind_line])
+            else:
+                return geninfo
         return geninfo
 
     def disrupt_prod(self, offspring):
@@ -305,29 +271,6 @@ class GA:
 
         return geninfo
 
-        # tar_firsttask = np.where(
-        #     self.prod_ind == self.prod_ind[tar_task])[0][0]
-        # tar_lasttask = np.where(
-        #     self.prod_ind == self.prod_ind[tar_task])[0][-1]
-
-        # task_line_loca = self.get_pos(geninfo)
-
-        # bound_left, bound_right = 0, len(exline)
-        # for pre_task_ind in range(tar_firsttask, tar_lasttask + 1):
-        #     pre_pos = task_line_loca[pre_task_ind]
-        #     if (pre_pos[0] == tmp_line[1]):
-        #         if (pre_task_ind < tar_task):
-        #             bound_left = pre_pos[1] + 1
-        #         elif (pre_task_ind > tar_task):
-        #             bound_right = pre_pos[1]
-        #             break
-
-        # geninfo[tmp_line[1]].insert(random.randint(
-        #     bound_left, bound_right), tar_task)
-        # del geninfo[tmp_line[0]][tar]
-
-        # return geninfo
-
     def GA_main(self):
         '''
         main frame work of GA
@@ -352,18 +295,19 @@ class GA:
                 # Select one individuals
                 offspring = random.choice(selectpop)
 
-                print("first %s" % offspring['data'])
+                # print("first %s" % offspring['data'])
                 # cross two individuals with probability CXPB
-                if random.random() < self.para['LINEPB']:
-                    disline_data = self.disrupt_line(offspring)
-                    offspring['data'] = copy.deepcopy(disline_data)
-                    print("second %s" % offspring['data'])
-
-                # mutate an individual with probability MUTPB
                 if random.random() < self.para['PRODPB']:
                     disprod_data = self.disrupt_prod(offspring)
                     offspring['data'] = copy.deepcopy(disprod_data)
-                    print("third %s" % offspring['data'])
+                    # print("third %s" % offspring['data'])
+
+                if random.random() < self.para['LINEPB']:
+                    disline_data = self.disrupt_line(offspring)
+                    offspring['data'] = copy.deepcopy(disline_data)
+                    # print("second %s" % offspring['data'])
+
+                # mutate an individual with probability MUTPB
 
                 offspring['fitness'] = self.evaluate(offspring['data'])
                 nextoff.append(offspring)
@@ -383,7 +327,7 @@ class GA:
             best_ind = self.selectBest(self.pop)
 
             if best_ind['fitness'] < self.bestindividual['fitness']:
-                self.bestindividual = best_ind
+                self.bestindividual = copy.deepcopy(best_ind)
 
             print("Best individual found is %s, %s" % (
                 self.bestindividual['data'], self.bestindividual['fitness']))
@@ -421,7 +365,7 @@ if __name__ == "__main__":
     parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 50, 'popsize': 100, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
                  """
-    parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 50, 'popsize': 500, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
+    parameter = {'LINEPB': 0.7, 'PRODPB': 0.3, 'NGEN': 100, 'popsize': 200, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
     run = GA(parameter)
     run.GA_main()
