@@ -5,6 +5,7 @@ import math
 from operator import itemgetter
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 
 class GA:
@@ -61,6 +62,53 @@ class GA:
                 task_line_loca[pos] = (ind1, ind2)
         return task_line_loca
 
+    def get_finish_time(self, individual, task_id, task_line_loca, finish_time_task, finish_time_status):
+        if finish_time_task[task_id] != -1:
+            return finish_time_task[task_id]
+        if finish_time_status[task_id] == -1:
+            return - 1
+
+        pre_pos = task_line_loca[task_id]
+        line_req = -1
+        prod_req = -1
+        if pre_pos[1] > 0:
+            line_req = individual[pre_pos[0]][pre_pos[1] - 1]
+        if task_id != np.where(self.prod_ind == self.prod_ind[task_id])[0][0]:
+            prod_req = task_id - 1
+
+        finish_time_status[task_id] = -1
+        line_req_time = -1
+        prod_req_time = -1
+        if line_req != -1:
+            line_req_time = self.get_finish_time(
+                individual, line_req, task_line_loca, finish_time_task, finish_time_status)
+            if line_req_time == -1:
+                return - 1
+
+        if prod_req != -1:
+            prod_req_time = self.get_finish_time(
+                individual, prod_req, task_line_loca, finish_time_task, finish_time_status)
+            if prod_req_time == -1:
+                return - 1
+
+        isn_proce = True
+        if prod_req != -1:
+            last_pos = task_line_loca[prod_req]
+            if ((pre_pos[0] == last_pos[0]) and (pre_pos[1] == last_pos[1] + 1)):
+                isn_proce = False
+
+        if line_req_time == -1 and prod_req_time == -1:
+            isn_proce = False
+
+        finish_time_status[task_id] = 0
+        pre_task_time = self.yield_time[pre_pos[0]][self.task_ind[task_id]]
+        if ((prod_req == -1) and (line_req == -1)):
+            finish_time_task[task_id] = pre_task_time
+        else:
+            finish_time_task[task_id] = max(
+                prod_req_time, line_req_time) + isn_proce*self.ex_time + pre_task_time
+        return finish_time_task[task_id]
+
     def evaluate(self, individual):
         # return fitness value
         # individual is the task id on each line
@@ -81,91 +129,16 @@ class GA:
             last_task_ind.append(np.where(self.prod_ind == i)[0][-1])
         first_task_ind = np.array(first_task_ind)
         last_task_ind = np.array(last_task_ind)
-        pre_task_ind = first_task_ind.copy()
         task_line_loca = self.get_pos(individual)
 
-        while True:
-            # print(individual)
-            # print(finish_time_task)
-            if np.sum(pre_task_ind > last_task_ind) >= self.prod_num:
-                break
-            for i in range(self.prod_num):
-                if (pre_task_ind[i] > last_task_ind[i]):
-                    continue
-                pre_task = pre_task_ind[i]
-                # print(" pre_task in evaluate %i" % pre_task)
-                pre_pos = task_line_loca[pre_task]
-                pre_task_time = self.yield_time[pre_pos[0]
-                                                ][self.task_ind[pre_task]]
-                # print("pre_task_time %i" % pre_task_time)
-                if (pre_task == 0):
-                    if (pre_pos[1] == 0):
-                        finish_time_task[pre_task] = pre_task_time
-                        pre_task_ind[i] += 1
-                        # print("00")
-                        # print(finish_time_task)
-                        # print(first_task_ind)
-                        continue
-                    else:
-                        last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
-                        if (finish_time_task[last_line_task] == -1):
-                            continue
-                        else:
-                            finish_time_task[pre_task] = finish_time_task[last_line_task] + \
-                                self.ex_time + pre_task_time
-                            pre_task_ind[i] += 1
-                            # print("000")
-                            # print(finish_time_task)
-                            # print(first_task_ind)
-                            continue
+        finish_time_task = [-1 for _ in range(self.totnum_task)]
+        finish_time_status = [0 for _ in range(self.totnum_task)]
 
-                last_pos = task_line_loca[pre_task - 1]
-                isn_proce = True
-                if ((pre_pos[0] == last_pos[0]) and (pre_pos[1] == last_pos[1] + 1)):
-                    isn_proce = False
-
-                if (pre_task == first_task_ind[i]):
-                    if (pre_pos[1] == 0):
-                        finish_time_task[pre_task] = pre_task_time
-                        pre_task_ind[i] += 1
-                        # print("111")
-                        # print(finish_time_task)
-                        continue
-                    else:
-                        last_line_task = individual[pre_pos[0]][pre_pos[1] - 1]
-                        if (finish_time_task[last_line_task] == -1):
-                            continue
-                        else:
-                            finish_time_task[pre_task] = finish_time_task[last_line_task] + \
-                                isn_proce * self.ex_time + pre_task_time
-                            pre_task_ind[i] += 1
-                            # print("222")
-                            # print(finish_time_task)
-                            continue
-                else:
-                    last_prod_task = pre_task - 1
-                    if (finish_time_task[last_prod_task] == -1):
-                        continue
-                    else:
-                        if (pre_pos[1] == 0):
-                            finish_time_task[pre_task] = finish_time_task[last_prod_task] + \
-                                isn_proce * self.ex_time + pre_task_time
-                            pre_task_ind[i] += 1
-                            # print("333")
-                            # print(finish_time_task)
-                            continue
-                        else:
-                            last_line_task = individual[pre_pos[0]
-                                                        ][pre_pos[1] - 1]
-                            if (finish_time_task[last_line_task] == -1):
-                                continue
-                            else:
-                                finish_time_task[pre_task] = max(
-                                    finish_time_task[last_line_task], finish_time_task[last_prod_task]) + isn_proce*self.ex_time + pre_task_time
-                                pre_task_ind[i] += 1
-                                # print("444")
-                                # print(finish_time_task)
-                                continue
+        for i in range(self.totnum_task):
+            if (self.get_finish_time(individual, i, task_line_loca, finish_time_task, finish_time_status) == -1):
+                print("go wrong!")
+                exit()
+                return -1
 
         var_line = 0
         if (np.max(line_worktime) == np.min(line_worktime)):
@@ -283,9 +256,8 @@ class GA:
         return geninfo
 
     def disrupt_prod(self, offspring):
-        print("  disrupt_prod")
         geninfo = offspring['data']
-        print("before disrupt_prod geninfo: %s" % geninfo)
+        # print("before disrupt_prod geninfo: %s" % geninfo)
         tmp_line = list(range(self.line_num))
         if (len(tmp_line) < 2):
             return geninfo
@@ -295,41 +267,66 @@ class GA:
             if (len(geninfo[tmp_line[0]]) > 0):
                 break
 
-        inline = geninfo[tmp_line[0]].copy()
-        exline = geninfo[tmp_line[1]].copy()
+        tmp_geninfo = copy.deepcopy(geninfo)
 
-        tar = 0
-        tar_task = 0
-        for _ in range(len(inline) * 2):
+        inline = copy.deepcopy(geninfo[tmp_line[0]])
+        exline = copy.deepcopy(geninfo[tmp_line[1]])
+
+        tar, tar_task = 0, 0
+        for i in range(len(inline) * 2):
             tar = random.randint(0, len(inline) - 1)
             tar_task = inline[tar]
             if (yield_time[tmp_line[1]][self.task_ind[tar_task]] != -1):
-                break
-        if (yield_time[tmp_line[1]][self.task_ind[tar_task]] == -1):
-            return geninfo
+                bound_left, bound_right = 0, len(exline)
+                rand_time = (bound_right - bound_left + 1) * 2
+                for _ in range(rand_time):
+                    # must use deepcopy in that del will influence the original list with shallow copy
+                    tmp_geninfo = copy.deepcopy(geninfo)
+                    tmp_geninfo[tmp_line[1]].insert(random.randint(
+                        bound_left, bound_right), tar_task)
+                    del tmp_geninfo[tmp_line[0]][tar]
 
-        tar_firsttask = np.where(
-            self.prod_ind == self.prod_ind[tar_task])[0][0]
-        tar_lasttask = np.where(
-            self.prod_ind == self.prod_ind[tar_task])[0][-1]
+                    finish_time_task = [-1 for _ in range(self.totnum_task)]
+                    finish_time_status = [0 for _ in range(self.totnum_task)]
+                    task_line_loca = self.get_pos(tmp_geninfo)
 
-        task_line_loca = self.get_pos(geninfo)
-
-        bound_left, bound_right = 0, len(exline)
-        for pre_task_ind in range(tar_firsttask, tar_lasttask + 1):
-            pre_pos = task_line_loca[pre_task_ind]
-            if (pre_pos[0] == tmp_line[1]):
-                if (pre_task_ind < tar_task):
-                    bound_left = pre_pos[1] + 1
-                elif (pre_task_ind > tar_task):
-                    bound_right = pre_pos[1]
-                    break
-
-        geninfo[tmp_line[1]].insert(random.randint(
-            bound_left, bound_right), tar_task)
-        del geninfo[tmp_line[0]][tar]
+                    flag = False
+                    for i in range(self.totnum_task):
+                        if (self.get_finish_time(tmp_geninfo, i, task_line_loca, finish_time_task, finish_time_status) == -1):
+                            flag = True
+                            break
+                    if flag:
+                        continue
+                    else:
+                        geninfo = copy.deepcopy(tmp_geninfo)
+                        # print("after disrupt_prod geninfo: %s" % geninfo)
+                        # print()
+                        return geninfo
 
         return geninfo
+
+        # tar_firsttask = np.where(
+        #     self.prod_ind == self.prod_ind[tar_task])[0][0]
+        # tar_lasttask = np.where(
+        #     self.prod_ind == self.prod_ind[tar_task])[0][-1]
+
+        # task_line_loca = self.get_pos(geninfo)
+
+        # bound_left, bound_right = 0, len(exline)
+        # for pre_task_ind in range(tar_firsttask, tar_lasttask + 1):
+        #     pre_pos = task_line_loca[pre_task_ind]
+        #     if (pre_pos[0] == tmp_line[1]):
+        #         if (pre_task_ind < tar_task):
+        #             bound_left = pre_pos[1] + 1
+        #         elif (pre_task_ind > tar_task):
+        #             bound_right = pre_pos[1]
+        #             break
+
+        # geninfo[tmp_line[1]].insert(random.randint(
+        #     bound_left, bound_right), tar_task)
+        # del geninfo[tmp_line[0]][tar]
+
+        # return geninfo
 
     def GA_main(self):
         '''
@@ -355,15 +352,18 @@ class GA:
                 # Select one individuals
                 offspring = random.choice(selectpop)
 
+                print("first %s" % offspring['data'])
                 # cross two individuals with probability CXPB
                 if random.random() < self.para['LINEPB']:
                     disline_data = self.disrupt_line(offspring)
-                    offspring['data'] = disline_data
+                    offspring['data'] = copy.deepcopy(disline_data)
+                    print("second %s" % offspring['data'])
 
                 # mutate an individual with probability MUTPB
-                # if random.random() < self.para['PRODPB']:
-                #     disprod_data = self.disrupt_prod(offspring)
-                #     offspring['data'] = disprod_data
+                if random.random() < self.para['PRODPB']:
+                    disprod_data = self.disrupt_prod(offspring)
+                    offspring['data'] = copy.deepcopy(disprod_data)
+                    print("third %s" % offspring['data'])
 
                 offspring['fitness'] = self.evaluate(offspring['data'])
                 nextoff.append(offspring)
