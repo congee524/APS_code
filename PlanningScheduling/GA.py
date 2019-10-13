@@ -38,36 +38,62 @@ class GA:
         pop = []
         for _ in range(self.popsize):
             geneinfo = [[] for _ in range(self.line_num)]
-            for i in range(0, self.totnum_task):
+            pre_task_ind = []
+            last_task_ind = []
+
+            for i in range(self.prod_num):
+                pre_task_ind.append(np.where(self.prod_ind == i)[0][0])
+                last_task_ind.append(np.where(self.prod_ind == i)[0][-1])
+            pre_task_ind = np.array(pre_task_ind)
+            last_task_ind = np.array(last_task_ind)
+
+            finish_time_task = [-1 for _ in range(self.totnum_task)]
+            task_line_loca = self.get_pos(geneinfo)
+            while sum(pre_task_ind > last_task_ind) < self.prod_num:
+                rand_prod_ind = random.randint(0, self.prod_num - 1)
+                if pre_task_ind[rand_prod_ind] > last_task_ind[rand_prod_ind]:
+                    continue
                 while True:
-                    ran_line_id = random.randint(0, self.line_num - 1)
-                    if self.yield_time[ran_line_id][self.task_ind[i]] == -1:
-                        continue
-                    geneinfo[ran_line_id].append(i)
-                    break
-                    # print("first %s" % offspring['data'])
-                    # cross two individuals with probability CXPB
-            offspring = {'data': geneinfo, 'fitness': 0}
-            k = random.randint(1, self.line_num)
-            for _ in range(k):
-                if random.random() < self.para['PRODPB']:
-                    disprod_data = self.disrupt_prod(offspring)
-                    offspring['data'] = disprod_data
-                    # print("third %s" % offspring['data'])
-
-                if random.random() < self.para['LINEPB']:
-                    disline_data = self.disrupt_line(offspring)
-                    offspring['data'] = disline_data
-                    # print("second %s" % offspring['data'])
-            fitness = self.evaluate(geneinfo)  # evaluate each chromosome
-            offspring['fitness'] = fitness
-            # store the chromosome and its fitness
-            pop.append(offspring)
-
+                    rand_line_id = random.randint(0, self.line_num - 1)
+                    if self.yield_time[rand_line_id][self.task_ind[pre_task_ind[rand_prod_ind]]] != -1:
+                        geneinfo[rand_line_id].append(pre_task_ind[rand_prod_ind])
+                        pre_task_ind[rand_prod_ind] += 1
+                        break
+            fitness = self.evaluate(geneinfo)
+            pop.append({'data': geneinfo, 'fitness': fitness})
         self.pop = pop
         # store the best chromosome in the population
         self.bestindividual = self.selectBest(self.pop)
         print("  Finish initial ")
+
+
+        """
+        for i in range(0, self.totnum_task):
+            while True:
+                ran_line_id = random.randint(0, self.line_num - 1)
+                if self.yield_time[ran_line_id][self.task_ind[i]] == -1:
+                    continue
+                geneinfo[ran_line_id].append(i)
+                break
+                # print("first %s" % offspring['data'])
+                # cross two individuals with probability CXPB
+        offspring = {'data': geneinfo, 'fitness': 0}
+        k = random.randint(1, self.line_num)
+        for _ in range(k):
+            if random.random() < self.para['PRODPB']:
+                disprod_data = self.disrupt_prod(offspring)
+                offspring['data'] = disprod_data
+                # print("third %s" % offspring['data'])
+
+            if random.random() < self.para['LINEPB']:
+                disline_data = self.disrupt_line(offspring)
+                offspring['data'] = disline_data
+                # print("second %s" % offspring['data'])
+        fitness = self.evaluate(geneinfo)  # evaluate each chromosome
+        offspring['fitness'] = fitness
+        # store the chromosome and its fitness
+        pop.append(offspring)
+        """
 
     def selectBest(self, pop):
         '''
@@ -160,13 +186,9 @@ class GA:
                                    for j in self.task_ind[individual[i]]]
         line_worktime = np.array([sum(i) for i in line_preworktime])
 
-        finish_time_task = [-1 for _ in range(self.totnum_task)]
-        first_task_ind = []
         last_task_ind = []
         for i in range(self.prod_num):
-            first_task_ind.append(np.where(self.prod_ind == i)[0][0])
             last_task_ind.append(np.where(self.prod_ind == i)[0][-1])
-        first_task_ind = np.array(first_task_ind)
         last_task_ind = np.array(last_task_ind)
         task_line_loca = self.get_pos(individual)
 
@@ -178,7 +200,6 @@ class GA:
                 print("Populations with unsatisfactory constraints emerged!")
                 exit()
 
-        var_line = 0
         if np.max(line_worktime) == np.min(line_worktime):
             var_line = 0
         else:
@@ -306,7 +327,8 @@ class GA:
 
                 # print("first %s" % offspring['data'])
                 # cross two individuals with probability CXPB
-                k = random.randint(1, self.line_num * 2)
+                # k = random.randint(1, self.line_num * 2)
+                k = 1
                 for _ in range(k):
                     if random.random() < self.para['PRODPB']:
                         disprod_data = self.disrupt_prod(offspring)
@@ -375,7 +397,7 @@ if __name__ == "__main__":
     parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 50, 'popsize': 100, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
                  """
-    parameter = {'LINEPB': 0.7, 'PRODPB': 0.3, 'NGEN': 100, 'popsize': 200, 'ex_time': 3, 'yield_time': yield_time,
+    parameter = {'LINEPB': 0.7, 'PRODPB': 0, 'NGEN': 50, 'popsize': 200, 'ex_time': 3, 'yield_time': yield_time,
                  'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
     run = GA(parameter)
