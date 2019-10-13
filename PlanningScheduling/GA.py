@@ -45,10 +45,24 @@ class GA:
                         continue
                     geneinfo[ran_line_id].append(i)
                     break
+                    # print("first %s" % offspring['data'])
+                    # cross two individuals with probability CXPB
+            offspring = {'data': geneinfo, 'fitness': 0}
+            k = random.randint(1, self.line_num)
+            for _ in range(k):
+                if random.random() < self.para['PRODPB']:
+                    disprod_data = self.disrupt_prod(offspring)
+                    offspring['data'] = disprod_data
+                    # print("third %s" % offspring['data'])
 
+                if random.random() < self.para['LINEPB']:
+                    disline_data = self.disrupt_line(offspring)
+                    offspring['data'] = disline_data
+                    # print("second %s" % offspring['data'])
             fitness = self.evaluate(geneinfo)  # evaluate each chromosome
+            offspring['fitness'] = fitness
             # store the chromosome and its fitness
-            pop.append({'data': geneinfo, 'fitness': fitness})
+            pop.append(offspring)
 
         self.pop = pop
         # store the best chromosome in the population
@@ -67,9 +81,13 @@ class GA:
         select two individuals from pop
         '''
         # print(individuals)
-        fit_rank = list(pd.Series(ind['fitness'] for ind in individuals).rank(ascending=False))
-        max_fit = max(fit_rank)
-
+        fit_rank = np.array(pd.Series(ind['fitness'] for ind in individuals).rank(ascending=False))
+        max_fit = np.max(fit_rank)
+        fit_rank[fit_rank < max_fit / 4] = 1
+        fit_rank[(fit_rank < max_fit / 2) & (fit_rank >= max_fit / 4)] = 2
+        fit_rank[(fit_rank < 3 * max_fit / 4) & (fit_rank >= max_fit / 2)] = 3
+        fit_rank[fit_rank >= 3 * max_fit / 4] = 4
+        max_fit = np.max(fit_rank)
         chosen = []
         for _ in range(k):
             while True:
@@ -288,15 +306,17 @@ class GA:
 
                 # print("first %s" % offspring['data'])
                 # cross two individuals with probability CXPB
-                if random.random() < self.para['PRODPB']:
-                    disprod_data = self.disrupt_prod(offspring)
-                    offspring['data'] = copy.deepcopy(disprod_data)
-                    # print("third %s" % offspring['data'])
+                k = random.randint(1, self.line_num * 2)
+                for _ in range(k):
+                    if random.random() < self.para['PRODPB']:
+                        disprod_data = self.disrupt_prod(offspring)
+                        offspring['data'] = disprod_data
+                        # print("third %s" % offspring['data'])
 
-                if random.random() < self.para['LINEPB']:
-                    disline_data = self.disrupt_line(offspring)
-                    offspring['data'] = copy.deepcopy(disline_data)
-                    # print("second %s" % offspring['data'])
+                    if random.random() < self.para['LINEPB']:
+                        disline_data = self.disrupt_line(offspring)
+                        offspring['data'] = disline_data
+                        # print("second %s" % offspring['data'])
 
                 # mutate an individual with probability MUTPB
 
@@ -355,7 +375,7 @@ if __name__ == "__main__":
     parameter = {'LINEPB': 0.7, 'PRODPB': 0.7, 'NGEN': 50, 'popsize': 100, 'ex_time': 3, 'yield_time': yield_time, 'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
                  """
-    parameter = {'LINEPB': 0.7, 'PRODPB': 0.3, 'NGEN': 50, 'popsize': 50, 'ex_time': 3, 'yield_time': yield_time,
+    parameter = {'LINEPB': 0.7, 'PRODPB': 0.3, 'NGEN': 100, 'popsize': 200, 'ex_time': 3, 'yield_time': yield_time,
                  'prod_ind': prod_ind,
                  'task_ind': task_ind, "prod_prio": prod_prio}
     run = GA(parameter)
